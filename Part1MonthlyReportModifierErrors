@@ -1,0 +1,91 @@
+# Content from 1 Monthly Report Part 1.py
+import pandas as pd
+
+# Part 1: Reading the CSV
+df = pd.read_csv('C:\\Users\\jdoran\\Downloads\\2023-09 Monthly Report\\Aotmation Files\\CSV files\\ClaimsSubmittedDetailedReport.csv')
+
+# Part 2: Delete Rows
+valid_options = ["Primary - Amerigroup Medicaid", "Primary - Community Health Plan of WA", "Primary - Molina Medicaid",
+                 "Primary - Coordinated Care Medicaid", "Secondary - Amerigroup Medicaid",
+                 "Secondary - Community Health Plan of WA", "Secondary - Molina Medicaid",
+                 "Secondary - Coordinated Care Medicaid"]
+
+df = df.loc[df['Patient Category'].str.contains('Directions', case=False, na=False) == False]
+df = df.loc[df['Payer Plan Name'].isin(valid_options)]
+
+# Part 3: Add Columns and Apply Conditions
+df['HH Modifier'] = None
+df['MH Dx'] = None
+
+# MH Dx Condition
+df.loc[(df['Dx1'].between('F20', 'Z13.30')) | (df['Dx2'].between('F20', 'Z13.30'))
+       | (df['Dx3'].between('F20', 'Z13.30')) | (df['Dx4'].between('F20', 'Z13.30')), 'MH Dx'] = 'x'
+
+# HH Modifier Condition
+df.loc[(df['M1'] == 'HH') | (df['M2'] == 'HH') | (df['M3'] == 'HH') | (df['M4'] == 'HH'),
+       'HH Modifier'] = 'x'
+
+# Part 4: Process Claims Data
+condition1 = (df['HH Modifier'] == 'x') & (df['MH Dx'].isna())
+condition2 = (df['HH Modifier'].isna()) & (df['MH Dx'] == 'x')
+new_df = df.loc[condition1 | condition2]
+
+# Part 5: Writing to CSV
+df.to_csv('C:\\Users\\jdoran\\Downloads\\2023-09 Monthly Report\\Aotmation Files\\CSV files\\ClaimsSubmittedDetailedReport_modified.csv', index=False)
+new_df.to_csv('C:\\Users\\jdoran\\Downloads\\2023-09 Monthly Report\\Aotmation Files\\CSV files\\MH_but_no_HH.csv', index=False)
+
+
+# Content from 2 Monthly Report Part 1 IVDU.py
+import pandas as pd
+
+# Load the original CSV into a DataFrame
+df = pd.read_csv('C:\\Users\\jdoran\\Downloads\\2023-09 Monthly Report\\Aotmation Files\\CSV files\\ClaimsSubmittedDetailedReport.csv')
+
+# Create a copy of the DataFrame to work with
+df_copy = df.copy()
+
+# Add a new column "Modifier U5" to the copied DataFrame
+df_copy['Modifier U5'] = None
+
+# Set "x" in "Modifier U5" based on conditions
+conditions = (df_copy['M1'] == 'U5') | (df_copy['M2'] == 'U5') | (df_copy['M3'] == 'U5') | (df_copy['M4'] == 'U5')
+df_copy.loc[conditions, 'Modifier U5'] = 'x'
+
+# Filter rows based on given conditions
+condition_U5 = df_copy['Modifier U5'] == 'x'
+condition_IVDU = df_copy['Patient Category'].str.contains('IVDU', case=False, na=False)
+
+# Keeping rows which either have "x" in "Modifier U5" or "IVDU" in "Patient Category", but not both.
+df_filtered = df_copy[(condition_U5 | condition_IVDU) & ~(condition_U5 & condition_IVDU)]
+
+# Save the filtered DataFrame to a new CSV
+df_filtered.to_csv('C:\\Users\\jdoran\\Downloads\\2023-09 Monthly Report\\Aotmation Files\\CSV files\\IVDU_but_not_U5.csv', index=False)
+
+
+# Content from 3 Monthly Report Part 1 PPW.py
+import pandas as pd
+
+# File paths
+input_csv_path = r'C:\Users\jdoran\Downloads\2023-09 Monthly Report\Aotmation Files\CSV files\ClaimsSubmittedDetailedReport.csv'
+output_csv_path = r'C:\Users\jdoran\Downloads\2023-09 Monthly Report\Aotmation Files\CSV files\PPW but not HD.csv'
+
+# Load the original CSV
+df = pd.read_csv(input_csv_path)
+
+# Add a new column "Modifier HD"
+df['Modifier HD'] = ''
+
+# Check conditions and mark "Modifier HD"
+df.loc[df['M1'] == 'HD', 'Modifier HD'] = 'x'
+df.loc[df['M2'] == 'HD', 'Modifier HD'] = 'x'
+df.loc[df['M3'] == 'HD', 'Modifier HD'] = 'x'
+df.loc[df['M4'] == 'HD', 'Modifier HD'] = 'x'
+
+# Filter rows based on conditions
+filtered_df = df[((df['Modifier HD'] == 'x') & ~(df['Patient Category'].str.contains('PPW'))) | 
+                  (~(df['Modifier HD'] == 'x') & (df['Patient Category'].str.contains('PPW')))]
+
+# Save the filtered data to a new CSV file
+filtered_df.to_csv(output_csv_path, index=False)
+
+
